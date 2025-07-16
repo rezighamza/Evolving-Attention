@@ -1,0 +1,20 @@
+# Configuration for the main evolutionary search
+
+environment:
+  device: "auto"  # 'auto', 'cuda', or 'cpu'
+
+logging:
+  results_path: "results/search_artifacts"
+
+proxy_task:
+  name: "MiniViT-MNIST"
+  d_model: 64 # Dimension of the proxy model. Must match operations.py if needed.
+  # Other task-specific params would go here
+
+# Evolutionary Algorithm (EA) parameters
+ea:
+  population_size: 50  # Keep small for a quick test run
+  generations: 50      # Keep small for a quick test run
+  tournament_size: 5
+  mutation_rate: 0.8
+  crossover_rate: 0.5

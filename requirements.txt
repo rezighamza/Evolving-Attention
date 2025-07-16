@@ -1,0 +1,20 @@
+
+# Core ML/DL
+torch
+torchvision
+torchaudio
+
+# Scientific Computing
+numpy
+
+# Utilities
+tqdm         # Progress bars
+pyyaml       # For handling .yaml configs
+matplotlib   # For plotting results
+seaborn      # For prettier plots
+pandas       # For results analysis
+fvcore       # For FLOPs and parameter counting
+
+# Optional: For evolutionary algorithm
+deap         # A popular EA framework we might use
+

@@ -1,0 +1,26 @@
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data and Results
+/data/
+/results/
+/notebooks/.ipynb_checkpoints
+
+# OS files
+.DS_Store
+Thumbs.db
+
