@@ -1,15 +1,19 @@
+# benchmarks/tasks/image_classification.py
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision.datasets import CIFAR100
+# --- CHANGE 1: Import CIFAR10 instead of CIFAR100 ---
+from torchvision.datasets import CIFAR10
 from torchvision.transforms import v2
 from tqdm import tqdm
 
 
-def get_cifar100_dataloaders(batch_size=128):
-    """ Gets CIFAR-100 dataloaders with standard augmentations. """
-    # Normalization values for CIFAR-100
-    mean, std = (0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)
+# --- CHANGE 2: Renamed function and updated for CIFAR-10 ---
+def get_cifar10_dataloaders(batch_size=128):
+    """ Gets CIFAR-10 dataloaders with standard augmentations. """
+    # --- CHANGE 3: Use the correct normalization values for CIFAR-10 ---
+    mean, std = (0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)
 
     train_transform = v2.Compose([
         v2.RandomCrop(32, padding=4),
@@ -26,8 +30,9 @@ def get_cifar100_dataloaders(batch_size=128):
         v2.Normalize(mean, std)
     ])
 
-    train_dataset = CIFAR100(root='./data', train=True, download=True, transform=train_transform)
-    test_dataset = CIFAR100(root='./data', train=False, download=True, transform=test_transform)
+    # --- CHANGE 4: Use the CIFAR10 dataset class ---
+    train_dataset = CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+    test_dataset = CIFAR10(root='./data', train=False, download=True, transform=test_transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4, pin_memory=True)
@@ -38,7 +43,8 @@ def get_cifar100_dataloaders(batch_size=128):
 def run_benchmark(model, epochs=20, lr=1e-3, device='cuda'):
     """ Runs a full training and evaluation benchmark for a given model. """
     model.to(device)
-    train_loader, test_loader = get_cifar100_dataloaders()
+    # --- CHANGE 5: Call the new CIFAR-10 dataloader function ---
+    train_loader, test_loader = get_cifar10_dataloaders()
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)

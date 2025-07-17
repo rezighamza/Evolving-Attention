@@ -3,26 +3,23 @@
 import json
 import torch
 from pathlib import Path
-import argparse  # Import the argument parsing library
+import argparse
 
 from benchmarks.models.vit import VisionTransformer
 from benchmarks.models.attention_modules import StandardAttention, DiscoveredAttention
 from benchmarks.tasks.image_classification import run_benchmark
+# --- NEW: Import the automated pruner ---
+from src.utils.graph_pruning import prune_graph
 
 
 def main():
-    # --- New: Setup Argument Parser ---
     parser = argparse.ArgumentParser(description="Benchmark discovered attention mechanisms against a baseline.")
     parser.add_argument(
-        "--run_dir",
-        type=str,
-        required=True,
-        help="The timestamped directory of the search run to benchmark (e.g., 'search_20250716-053346')."
+        "--run_dir", type=str, required=True,
+        help="The timestamped directory of the search run to benchmark (e.g., 'search_...')."
     )
     parser.add_argument(
-        "--candidate_idx",
-        type=int,
-        default=0,
+        "--candidate_idx", type=int, default=0,
         help="The index of the candidate to select from the pareto_front.json file (default: 0)."
     )
     args = parser.parse_args()
@@ -31,29 +28,33 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Running benchmark on device: {device}")
 
-    # --- 1. Load the discovered attention graph (using the command-line argument) ---
-    ROOT_DIR = Path(__file__).resolve().parent.parent
-    results_file = ROOT_DIR / "results" / "search_artifacts" / args.run_dir / "pareto_front.json"
+    # --- 1. Load the discovered attention graph ---
+    results_file = Path("results/search_artifacts") / args.run_dir / "pareto_front.json"
 
-    print(f"Attempting to load results from: {results_file}")
     if not results_file.is_file():
-        print(f"Error: Could not find results file at the specified path.")
+        print(f"Error: Could not find results file at {results_file}.")
         return
 
     with open(results_file, 'r') as f:
         data = json.load(f)
 
-    # Select the specific candidate from the Pareto front
     if args.candidate_idx >= len(data['pareto_front']):
         print(
             f"Error: candidate_idx {args.candidate_idx} is out of bounds for the Pareto front (size: {len(data['pareto_front'])}).")
         return
 
     discovered_candidate = data['pareto_front'][args.candidate_idx]
-    discovered_graph = discovered_candidate['graph']
-    print(f"Loaded candidate {args.candidate_idx} from run '{args.run_dir}':")
-    print(f"  - Graph: {discovered_graph}")
+    original_graph = discovered_candidate['graph']
+
+    # --- NEW: Automatically prune the graph ---
+    pruned_graph = prune_graph(original_graph)
+
+    print(f"\nLoaded candidate {args.candidate_idx} from run '{args.run_dir}':")
     print(f"  - Fitness: {discovered_candidate['fitness']}")
+    print("\nOriginal Graph:")
+    print(json.dumps(original_graph, indent=2))
+    print("\nAutomatically Pruned Graph:")
+    print(json.dumps(pruned_graph, indent=2))
 
     # --- 2. Define Benchmark Models ---
     vit_params = {
@@ -65,7 +66,9 @@ def main():
     baseline_vit = VisionTransformer(attention_module_class=StandardAttention, **vit_params)
 
     print("Initializing model with Discovered Attention...")
-    discovered_vit = VisionTransformer(attention_module_class=DiscoveredAttention, attention_graph_def=discovered_graph,
+    discovered_vit = VisionTransformer(attention_module_class=DiscoveredAttention,
+                                       # --- Use the pruned graph ---
+                                       attention_graph_def=pruned_graph,
                                        **vit_params)
 
     # --- 3. Run Benchmarks ---
@@ -79,11 +82,12 @@ def main():
     discovered_accuracy = run_benchmark(discovered_vit, epochs=epochs, lr=lr, device=device)
 
     # --- 4. Report Final Results ---
-    print("\n--- Benchmark Complete ---")
-    print(f"Run Directory: {args.run_dir}")
-    print(f"Candidate Index: {args.candidate_idx}")
+    print("\n" + "=" * 40)
+    print("      FINAL BENCHMARK RESULTS")
+    print("=" * 40)
     print(f"Standard Attention Accuracy: {baseline_accuracy:.2f}%")
     print(f"Discovered Attention Accuracy: {discovered_accuracy:.2f}%")
+    print("=" * 40)
 
 
 if __name__ == '__main__':

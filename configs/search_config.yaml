@@ -1,20 +1,19 @@
-# Configuration for the main evolutionary search
+# configs/search_config.yaml
 
 environment:
-  device: "auto"  # 'auto', 'cuda', or 'cpu'
+  device: auto
 
 logging:
   results_path: "results/search_artifacts"
 
 proxy_task:
-  name: "MiniViT-MNIST"
-  d_model: 64 # Dimension of the proxy model. Must match operations.py if needed.
-  # Other task-specific params would go here
+  name: "MiniViT-CIFAR10"  # ✅ CONFIRM: This is set to CIFAR-10
+  d_model: 64
+  # No need for img_size/patch_size here, they are hardcoded in the new proxy_tasks.py for consistency
 
-# Evolutionary Algorithm (EA) parameters
 ea:
-  population_size: 50  # Keep small for a quick test run
-  generations: 50      # Keep small for a quick test run
-  tournament_size: 5
+  population_size: 50   # ✅ CONFIRM: A larger population (e.g., 50)
+  generations: 50       # ✅ CONFIRM: More generations (e.g., 50)
   mutation_rate: 0.8
   crossover_rate: 0.5
+  tournament_size: 3    # ✅ CONFIRM: This new parameter is present
