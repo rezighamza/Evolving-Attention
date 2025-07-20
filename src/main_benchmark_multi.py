@@ -5,7 +5,6 @@ import torch
 import argparse
 from pathlib import Path
 
-# --- IMPORTANT: Ensure BenchmarkEncoderLayer is updated to be projection-aware ---
 from benchmarks.models.vit import VisionTransformer
 from benchmarks.tasks.image_classification import run_benchmark as run_vision_benchmark
 
@@ -28,7 +27,7 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"--- Starting Co-Evolved Benchmark Suite on device: {device} with Seed: {args.seed} ---")
 
-    # --- 1. Load and Prune the Champion Chromosome ---
+    # --- 1. Load the Champion Chromosome ---
     base_dir = Path(__file__).resolve().parent.parent
     results_file = base_dir / "results/search_artifacts" / args.run_dir / "pareto_front.json"
 
@@ -39,8 +38,11 @@ def main():
         print(f"Error: Candidate index {args.candidate_idx} is out of bounds.")
         return
 
-    # The champion is now the entire chromosome dictionary
-    champion_chromosome = data['pareto_front'][args.candidate_idx]
+    # --- THIS IS THE FIX ---
+    # The chromosome data is nested under the 'graph' key.
+    champion_chromosome = data['pareto_front'][args.candidate_idx]['graph']
+
+    # Now the following lines will work correctly
     original_graph = champion_chromosome['graph_def']
     proj_config = champion_chromosome['proj_config']
 
@@ -52,20 +54,24 @@ def main():
     print("Loaded and Pruned Champion Chromosome:")
     print(f"  - Projection Config: {proj_config}")
     print(f"  - Pruned Graph: {json.dumps(pruned_graph, indent=2)}")
-    print(f"  - Fitness on Proxy Task: {champion_chromosome['fitness']}")
+    # We need to go up one level to get the fitness
+    print(f"  - Fitness on Proxy Task: {data['pareto_front'][args.candidate_idx]['fitness']}")
     print("=" * 50 + "\n")
+
+    # The rest of the file is correct and does not need to be changed.
+    # ... (BENCHMARK 1 and BENCHMARK 2 sections are the same) ...
+    # ... (FINAL REPORT section is the same) ...
 
     # === BENCHMARK 1: IMAGE CLASSIFICATION (CIFAR-10) ===
     print("\n--- Benchmark 1: Vision Transformer on CIFAR-10 ---")
     vit_params = {'img_size': 32, 'patch_size': 4, 'd_model': 192, 'n_layers': 6, 'n_head': 3,
                   'dim_feedforward': 192 * 4, 'n_classes': 10}
 
-    # Baseline uses standard attention and a standard full projection config
     baseline_proj_config = {'has_wq': True, 'has_wk': True, 'has_wv': True, 'has_wo': True}
     baseline_vit = VisionTransformer(attention_module_class=StandardAttention,
+                                     attention_graph_def=None,  # Baseline has no graph_def
                                      proj_config=baseline_proj_config, **vit_params)
 
-    # Champion uses discovered attention graph AND discovered projection config
     champion_vit = VisionTransformer(attention_module_class=DiscoveredAttention,
                                      attention_graph_def=pruned_graph,
                                      proj_config=proj_config, **vit_params)
@@ -81,6 +87,7 @@ def main():
     text_params = {'n_tokens': n_tokens, 'd_model': 128, 'n_head': 4, 'dim_feedforward': 128 * 4, 'n_layers': 4}
 
     baseline_text = TextTransformer(attention_module_class=StandardAttention,
+                                    attention_graph_def=None,
                                     proj_config=baseline_proj_config, **text_params)
     champion_text = TextTransformer(attention_module_class=DiscoveredAttention,
                                     attention_graph_def=pruned_graph,
