@@ -36,3 +36,26 @@ def crossover_graphs(graph1, graph2):
         return graph
 
     return fix_graph(child1_graph), fix_graph(child2_graph)
+
+
+def crossover_chromosomes(chromo1, chromo2):
+    """
+    Performs crossover on the entire chromosome (graph and proj_config).
+    """
+    child1_graph, child2_graph = crossover_graphs(chromo1['graph_def'], chromo2['graph_def'])
+
+    # For projection config, we can do a simple swap or random choice
+    child1_proj = deepcopy(chromo1['proj_config'])
+    child2_proj = deepcopy(chromo2['proj_config'])
+
+    # One-point crossover for the dictionary keys
+    keys = list(child1_proj.keys())
+    crossover_point = random.randint(1, len(keys) - 1)
+    for i in range(crossover_point, len(keys)):
+        key = keys[i]
+        child1_proj[key], child2_proj[key] = child2_proj[key], child1_proj[key]
+
+    child1 = {'graph_def': child1_graph, 'proj_config': child1_proj}
+    child2 = {'graph_def': child2_graph, 'proj_config': child2_proj}
+
+    return child1, child2

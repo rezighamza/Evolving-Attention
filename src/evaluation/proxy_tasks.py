@@ -11,9 +11,22 @@ from src.search_space.symbolic_graph import SymbolicAttention
 
 class CustomEncoderLayer(nn.Module):
     """A simplified Transformer Encoder Layer that uses our SymbolicAttention."""
-    def __init__(self, d_model, n_head, dim_feedforward, dropout, graph_def):
+
+    def __init__(self, d_model, n_head, dim_feedforward, dropout, chromosome):
         super().__init__()
-        self.self_attn = SymbolicAttention(graph_def, d_model)
+        self.d_model = d_model
+        self.n_head = n_head
+        self.d_head = d_model // n_head
+        self.proj_config = chromosome['proj_config']
+
+        # The symbolic attention part remains the same
+        self.self_attn = SymbolicAttention(chromosome['graph_def'], self.d_head)
+
+        # --- Conditionally create projection layers ---
+        self.Wq = nn.Linear(d_model, d_model) if self.proj_config['has_wq'] else nn.Identity()
+        self.Wk = nn.Linear(d_model, d_model) if self.proj_config['has_wk'] else nn.Identity()
+        self.Wv = nn.Linear(d_model, d_model) if self.proj_config['has_wv'] else nn.Identity()
+        self.Wo = nn.Linear(d_model, d_model) if self.proj_config['has_wo'] else nn.Identity()
 
         self.ffn = nn.Sequential(
             nn.Linear(d_model, dim_feedforward),
@@ -27,8 +40,19 @@ class CustomEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src):
-        src_norm = self.norm1(src)
-        attn_output = self.self_attn(src_norm, src_norm, src_norm)
+        x_norm = self.norm1(src)
+        batch_size, seq_len, _ = x_norm.shape
+
+        # Apply projections (or identity)
+        q = self.Wq(x_norm).reshape(batch_size, seq_len, self.n_head, self.d_head).transpose(1, 2)
+        k = self.Wk(x_norm).reshape(batch_size, seq_len, self.n_head, self.d_head).transpose(1, 2)
+        v = self.Wv(x_norm).reshape(batch_size, seq_len, self.n_head, self.d_head).transpose(1, 2)
+
+        attn_output = self.self_attn(q, k, v)
+        attn_output = attn_output.transpose(1, 2).reshape(batch_size, seq_len, self.d_model)
+
+        # Apply output projection (or identity)
+        attn_output = self.Wo(attn_output)
         src = src + self.dropout(attn_output)
 
         ffn_output = self.ffn(self.norm2(src))
@@ -38,7 +62,7 @@ class CustomEncoderLayer(nn.Module):
 
 class ProxyVisionTransformer(nn.Module):
     """The Proxy Model: A tiny Vision Transformer for CIFAR-10."""
-    def __init__(self, graph_def, img_size=32, patch_size=4, d_model=64, n_classes=10):
+    def __init__(self, chromosome, img_size=32, patch_size=4, d_model=64, n_classes=10):
         super().__init__()
         self.d_model = d_model
         num_patches = (img_size // patch_size) ** 2
@@ -50,11 +74,8 @@ class ProxyVisionTransformer(nn.Module):
         self.pos_embed = nn.Parameter(torch.randn(1, num_patches + 1, d_model))
 
         self.encoder = CustomEncoderLayer(
-            d_model=d_model,
-            n_head=1,
-            dim_feedforward=d_model * 4,
-            dropout=0.1,
-            graph_def=graph_def
+            d_model=d_model, n_head=1, dim_feedforward=d_model * 4,
+            dropout=0.1, chromosome=chromosome
         )
 
         self.head = nn.Linear(d_model, n_classes)

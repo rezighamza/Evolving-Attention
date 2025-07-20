@@ -97,3 +97,27 @@ def mutate_graph(graph_def):
                         mutated_graph[i]['inputs'][j] -= 1  # Shift index
 
     return mutated_graph
+
+
+def mutate_projection_config(proj_config):
+    """Mutates one of the boolean projection flags."""
+    mutated_config = deepcopy(proj_config)
+    key_to_mutate = random.choice(list(mutated_config.keys()))
+    mutated_config[key_to_mutate] = not mutated_config[key_to_mutate]
+    return mutated_config
+
+
+def mutate_chromosome(chromosome):
+    """
+    Top-level mutation function that can mutate either the graph
+    or the projection configuration.
+    """
+    mutated_chromosome = deepcopy(chromosome)
+
+    # Choose whether to mutate the graph or the projection config
+    if random.random() < 0.8:  # 80% chance to mutate the graph
+        mutated_chromosome['graph_def'] = mutate_graph(mutated_chromosome['graph_def'])
+    else:  # 20% chance to mutate the projection
+        mutated_chromosome['proj_config'] = mutate_projection_config(mutated_chromosome['proj_config'])
+
+    return mutated_chromosome

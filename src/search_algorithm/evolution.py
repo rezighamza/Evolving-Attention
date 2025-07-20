@@ -9,6 +9,9 @@ from src.evaluation.fitness import FitnessCalculator
 from src.search_algorithm.mutation_operators import mutate_graph
 from src.search_algorithm.crossover_operators import crossover_graphs
 
+from src.search_algorithm.mutation_operators import mutate_chromosome
+from src.search_algorithm.crossover_operators import crossover_chromosomes
+
 
 def fast_non_dominated_sort(fitnesses):
     population_size = len(fitnesses)
@@ -96,13 +99,22 @@ class NSGAIISearch:
         self.tournament_size = tournament_size
 
     def _initialize_population(self):
-        initial_graph = [
-            {'op': 'scaled_dot_product', 'inputs': ['q', 'k']},
-            {'op': 'softmax', 'inputs': [0]},
-            {'op': 'weighted_sum', 'inputs': [1, 'v']},
-        ]
-        # Mutate the initial graphs to create more diversity from the start
-        return [mutate_graph(deepcopy(initial_graph)) for _ in range(self.population_size)]
+        """Initializes a population of chromosomes (graph + proj_config)."""
+        population = []
+        for _ in range(self.population_size):
+            # Start with standard attention graph
+            graph_def = [
+                {'op': 'scaled_dot_product', 'inputs': ['q', 'k']},
+                {'op': 'softmax', 'inputs': [0]},
+                {'op': 'weighted_sum', 'inputs': [1, 'v']},
+            ]
+            # And a standard full projection config
+            proj_config = {'has_wq': True, 'has_wk': True, 'has_wv': True, 'has_wo': True}
+
+            # Create a chromosome and mutate it to create diversity
+            chromosome = {'graph_def': graph_def, 'proj_config': proj_config}
+            population.append(mutate_chromosome(chromosome))
+        return population
 
     def run(self):
         print("Initializing and evaluating initial population...")
@@ -130,12 +142,12 @@ class NSGAIISearch:
                 parent1, parent2 = population[p1_idx], population[p2_idx]
 
                 if random.random() < self.crossover_rate:
-                    child1, child2 = crossover_graphs(parent1, parent2)
+                    child1, child2 = crossover_chromosomes(parent1, parent2)
                 else:
                     child1, child2 = deepcopy(parent1), deepcopy(parent2)
 
-                offspring_population.append(mutate_graph(child1))
-                offspring_population.append(mutate_graph(child2))
+                offspring_population.append(mutate_chromosome(child1))
+                offspring_population.append(mutate_chromosome(child2))
 
             # --- Evaluate offspring and create combined pool for selection ---
             offspring_fitnesses = [self.fitness_calculator.calculate_fitness(ind) for ind in

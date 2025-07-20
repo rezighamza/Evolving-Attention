@@ -17,6 +17,4 @@ class StandardAttention(nn.Module):
         weights = self.softmax(scores)
         return torch.matmul(weights, v)
 
-
-# We can re-use our SymbolicAttention for the discovered candidate
 DiscoveredAttention = SymbolicAttention
