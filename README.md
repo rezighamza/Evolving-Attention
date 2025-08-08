@@ -1,58 +1,6 @@
 # Evolving Attention: Automated Discovery of Novel Attention Mechanisms
 
-## Current Status & Performance Highlights (As of July 20, 2025)
-
-**Key Algorithmic Features & Discoveries:**
-*   The system implements a **co-evolutionary search** using the **NSGA-II** algorithm to simultaneously discover both the computational graph of an attention mechanism and its optimal linear projection strategy.
-*   The search space is a **compositional graph of raw mathematical primitives** (e.g., `scaled_dot_product`, `multiply`, `softmax`), allowing for the invention of entirely new formulas.
-*   A key innovation is a **definitive, path-aware semantic validator** that prunes the search space by enforcing the logical `Score -> Normalize -> Aggregate` flow of attention, preventing the evolution of "cheater" architectures.
-*   The search successfully converged on a **novel, query-less attention mechanism** where attention scores are derived from a `Value-Key` interaction (`V @ K.T`).
-*   The co-evolutionary process determined that the optimal configuration for this new mechanism was to **disable the query and key projection layers** (`has_wq: false`, `has_wk: false`), a non-trivial architectural discovery.
-
-**Performance Summary (Averaged over multiple random seeds):**
-
-| Benchmark Task             | Standard Attention (Baseline) | Discovered Champion (Ours) | Performance Gap | Notes on Performance                                                                                               |
-| :------------------------- | :---------------------------- | :------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------- |
-| Vision (CIFAR-10)          | 58.92% ± 0.49%                | 57.46% ± 0.16%             | **-1.46%**      | The discovered mechanism is highly competitive, performing well within a 2% margin of the powerful standard baseline.      |
-| Text (IMDB Sentiment)      | 52.86% ± 0.70%                | 52.89% ± 0.78%             | **+0.03%**      | Performance is statistically identical, proving the discovered mechanism is general-purpose and not overfit to a single modality. |
-
-**Note:**
-*   Results are the mean and standard deviation of accuracy (%) over two runs with different random seeds (42, 101).
-*   The benchmark models are small Transformers (ViT and Text Transformer) trained from scratch to provide a fair, controlled comparison. The goal is relative performance, not absolute SOTA.
-
-## The Discovered Champion Mechanism
-
-The primary discovery is a novel, query-less, self-attentive mechanism. After automated pruning, the architecture is defined as:
-
-**Projection Configuration:**
-```json
-{
-    "has_wq": false,
-    "has_wk": false,
-    "has_wv": true,
-    "has_wo": true
-}
-```
-
-**Computational Graph:**
-```json
-[
-    { "op": "scaled_dot_product", "inputs": ["v", "k"] },
-    { "op": "sigmoid", "inputs": [0] },
-    { "op": "gelu", "inputs": ["v"] },
-    { "op": "layer_norm", "inputs": [2] },
-    { "op": "weighted_sum", "inputs": [1, 3] }
-]
-```
-
-**Effective Formula:**
-`Weights = Sigmoid(Value @ Key.T / d_k)`
-`Transformed_Value = LayerNorm(GELU(Value))`
-`Output = Weights @ Transformed_Value`
-
-This is a significant departure from the standard `Query-Key-Value` paradigm, suggesting that for certain tasks, the query's role can be implicitly fulfilled by the values themselves.
-
-## Table of Contents
+<img src="docs/main_page-0001.jpg" alt="Project Overview" width="1000">## Table of Contents
 1.  [Project Overview](#1-project-overview)
 2.  [Directory Structure](#2-directory-structure)
 3.  [Core Components](#3-core-components)
