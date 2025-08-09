@@ -1,6 +1,8 @@
 # Evolving Attention: Automated Discovery of Novel Attention Mechanisms
 
-<img src="docs/main_page-0001.jpg" alt="Project Overview" width="1000">## Table of Contents
+<img src="docs/main_page-0001.jpg" alt="Project Overview" width="1000">
+
+## Table of Contents
 1.  [Project Overview](#1-project-overview)
 2.  [Directory Structure](#2-directory-structure)
 3.  [Core Components](#3-core-components)
